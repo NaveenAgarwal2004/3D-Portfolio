@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --obsidian: #030303;
+    --ionized-blue: #4D7FFF;
+    --violet-accent: #8B5CF6;
+    --glass-tint: #E0E7FF;
+    --warning: #F43F5E;
+    --success: #10B981;
+    --neutral-gray: #6B7280;
+    --pure-white: #FFFFFF;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-neutralGray/30;
+  }
+  body {
+    @apply bg-obsidian text-white;
+  }
+}
+
+@layer utilities {
+  .glass-effect {
+    @apply bg-glassTint/10 backdrop-blur-md border border-glassTint/20;
+  }
+  
+  .text-gradient {
+    @apply bg-gradient-to-r from-ionizedBlue to-violetAccent bg-clip-text text-transparent;
+  }
+}

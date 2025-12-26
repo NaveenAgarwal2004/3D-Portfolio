@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model VisitorSession {
+  id           String   @id @default(uuid())
+  sessionId    String   @unique
+  ipHash       String?
+  userAgent    String?
+  country      String?
+  device       String?
+  
+  events       VisitorEvent[]
+  aiChats      AIChatHistory[]
+  
+  createdAt    DateTime @default(now())
+  lastActivity DateTime @updatedAt
+  
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model VisitorEvent {
+  id          String   @id @default(uuid())
+  sessionId   String
+  eventType   EventType
+  projectSlug String?
+  scrollDepth Int?
+  timeSpent   Int?
+  metadata    Json?
+  
+  session     VisitorSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([sessionId, eventType])
+  @@index([projectSlug])
+  @@index([createdAt])
+}
+
+enum EventType {
+  PAGE_VIEW
+  PROJECT_CLICK
+  AI_QUERY
+  CONTACT_SUBMIT
+  LAB_INTERACTION
+  SCROLL_DEPTH
+  VISITOR_PULSE
+  GODMODE_ACTIVATED
+}
+
+model AIChatHistory {
+  id          String   @id @default(uuid())
+  sessionId   String
+  userMessage String   @db.Text
+  aiResponse  String   @db.Text
+  aiProvider  String
+  mode        String
+  context     String[]
+  tokenCount  Int?
+  
+  session     VisitorSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([aiProvider])
+  @@index([createdAt])
+}
+
+model ProjectStats {
+  id                String   @id @default(uuid())
+  projectSlug       String   @unique
+  
+  totalViews        Int      @default(0)
+  uniqueVisitors    Int      @default(0)
+  averageTimeSpent  Float    @default(0)
+  scrollDepth       Float    @default(0)
+  engagementScore   Float    @default(0)
+  bounceRate        Float    @default(0)
+  conversionRate    Float    @default(0)
+  
+  lastCalculated    DateTime @updatedAt
+  
+  @@index([projectSlug])
+  @@index([engagementScore])
+}
+
+model ContactSubmission {
+  id        String   @id @default(uuid())
+  sessionId String?
+  
+  name      String
+  email     String
+  message   String   @db.Text
+  
+  brevoMessageId String?
+  status         EmailStatus @default(PENDING)
+  deliveredAt    DateTime?
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  
+  ipHash         String?
+  userAgent      String?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+}
+
+model LiveStats {
+  id              String   @id @default(uuid())
+  
+  activeVisitors  Int      @default(0)
+  totalSessions   Int      @default(0)
+  totalPageViews  Int      @default(0)
+  aiQueriesCount  Int      @default(0)
+  geminiRequests  Int      @default(0)
+  grokRequests    Int      @default(0)
+  
+  updatedAt       DateTime @updatedAt
+  
+  @@index([updatedAt])
+}
+
+model ErrorLog {
+  id          String   @id @default(uuid())
+  
+  errorType   String
+  errorMessage String  @db.Text
+  stackTrace   String?  @db.Text
+  
+  route       String?
+  userAgent   String?
+  sessionId   String?
+  
+  resolved    Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([errorType])
+  @@index([resolved])
+  @@index([createdAt])
+}
+
+model AIProviderUsage {
+  id          String   @id @default(uuid())
+  
+  provider    String
+  date        DateTime @db.Date
+  
+  requestCount Int     @default(0)
+  tokenCount   Int     @default(0)
+  errorCount   Int     @default(0)
+  
+  avgResponseTime Float @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([provider, date])
+  @@index([provider, date])
+}
