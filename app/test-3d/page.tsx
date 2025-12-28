@@ -15,6 +15,7 @@ const Canvas = dynamic(() => import('@/components/canvas/Canvas').then(mod => ({
 
 const Scene = dynamic(() => import('@/components/canvas/Scene').then(mod => ({ default: mod.Scene })), { ssr: false });
 const TestCube = dynamic(() => import('@/components/canvas/TestCube').then(mod => ({ default: mod.TestCube })), { ssr: false });
+const PerformanceOverlay = dynamic(() => import('@/components/canvas/PerformanceOverlay').then(mod => ({ default: mod.PerformanceOverlay })), { ssr: false });
 
 export default function Test3DPage() {
   return (
@@ -23,6 +24,7 @@ export default function Test3DPage() {
         <Canvas className="w-full h-full">
           <Scene>
             <TestCube />
+            <PerformanceOverlay />
           </Scene>
         </Canvas>
       </div>
@@ -35,6 +37,9 @@ export default function Test3DPage() {
             </h1>
             <p className="text-xl text-neutralGray">
               The cube should move as you scroll
+            </p>
+            <p className="text-sm text-neutralGray mt-4">
+              Dev Mode: FPS counter in bottom-left
             </p>
           </div>
         </div>
