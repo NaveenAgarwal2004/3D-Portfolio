@@ -1,13 +1,21 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { detectDevice } from '@/lib/utils/deviceDetection';
 
 export function Effects() {
-  const device = detectDevice();
+  const [shouldRender, setShouldRender] = useState(false);
   
-  // Disable post-processing on mobile or low-power devices
-  if (device.shouldReduceQuality || !device.recommendedSettings.postProcessing) {
+  useEffect(() => {
+    const device = detectDevice();
+    // Disable post-processing on mobile or low-power devices
+    if (!device.shouldReduceQuality && device.recommendedSettings.postProcessing) {
+      setShouldRender(true);
+    }
+  }, []);
+  
+  if (!shouldRender) {
     return null;
   }
   

@@ -15,7 +15,7 @@ export function detectDevice() {
   
   const userAgent = navigator.userAgent.toLowerCase();
   const isMobile = /mobile|android|iphone|ipad|phone/i.test(userAgent);
-  const isLowPower = navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4;
+  const isLowPower = !!(navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4);
   const isSlowGPU = detectSlowGPU();
   
   return {

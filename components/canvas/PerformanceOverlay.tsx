@@ -11,10 +11,24 @@ interface PerformanceMetrics {
   memoryUsage: number;
 }
 
+interface DeviceSettings {
+  isMobile: boolean;
+  recommendedSettings: { 
+    targetFPS: number;
+  };
+}
+
 export function PerformanceOverlay() {
   const [showWarning, setShowWarning] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
-  const device = detectDevice();
+  const [device, setDevice] = useState<DeviceSettings>({
+    isMobile: false,
+    recommendedSettings: { targetFPS: 60 },
+  });
+  
+  useEffect(() => {
+    setDevice(detectDevice() as DeviceSettings);
+  }, []);
   
   const metrics = usePerformanceMonitor(
     (metrics: PerformanceMetrics) => {
