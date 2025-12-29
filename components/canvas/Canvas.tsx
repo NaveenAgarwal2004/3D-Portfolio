@@ -1,21 +1,9 @@
 'use client';
 
 import { Suspense, ReactNode, useState, useEffect } from 'react';
+import { Canvas as R3FCanvas } from '@react-three/fiber';
 import { detectDevice } from '@/lib/utils/deviceDetection';
-import dynamic from 'next/dynamic';
-
-// Dynamically import R3FCanvas to prevent SSR issues
-const R3FCanvas = dynamic(
-  () => import('@react-three/fiber').then((mod) => mod.Canvas),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-full flex items-center justify-center bg-obsidian">
-        <div className="text-white text-sm font-mono">Loading 3D Engine...</div>
-      </div>
-    ),
-  }
-);
+import { GhostLoader } from './GhostLoader';
 
 interface CanvasProps {
   children: ReactNode;
@@ -38,9 +26,6 @@ interface DeviceSettings {
 }
 
 function CanvasContent({ children, device }: { children: ReactNode; device: DeviceSettings }) {
-  // Dynamically import GhostLoader
-  const GhostLoader = dynamic(() => import('./GhostLoader').then(mod => ({ default: mod.GhostLoader })), { ssr: false });
-  
   return (
     <Suspense fallback={<GhostLoader />}>
       {/* Lighting */}
