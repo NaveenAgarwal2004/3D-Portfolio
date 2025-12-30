@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+import { useState, useEffect, useCallback } from 'react';
+import { useThree, useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import { detectDevice } from '@/lib/utils/deviceDetection';
 
 interface PerformanceMetrics {
@@ -18,46 +19,59 @@ interface DeviceSettings {
   };
 }
 
+// This component MUST be rendered inside the R3F Canvas since it uses useThree
 export function PerformanceOverlay() {
+  const { gl } = useThree();
   const [showWarning, setShowWarning] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
+  const [metrics, setMetrics] = useState<PerformanceMetrics>({
+    fps: 60,
+    drawCalls: 0,
+    triangles: 0,
+    memoryUsage: 0,
+  });
   const [device, setDevice] = useState<DeviceSettings>({
     isMobile: false,
     recommendedSettings: { targetFPS: 60 },
   });
   
+  const frameCountRef = { current: 0 };
+  const lastTimeRef = { current: performance.now() };
+  
   useEffect(() => {
     setDevice(detectDevice() as DeviceSettings);
   }, []);
   
-  const metrics = usePerformanceMonitor(
-    (metrics: PerformanceMetrics) => {
-      // Trigger warning on budget violation
-      const targetFPS = device.recommendedSettings.targetFPS;
+  useFrame(() => {
+    frameCountRef.current += 1;
+    
+    // Calculate FPS every 60 frames
+    if (frameCountRef.current % 60 === 0) {
+      const now = performance.now();
+      const delta = (now - lastTimeRef.current) / 1000;
+      const fps = Math.round(60 / delta);
       
-      if (metrics.fps < targetFPS * 0.8) {
-        setWarningMessage(`⚠️ Low FPS: ${metrics.fps} (target: ${targetFPS})`);
+      const info = gl.info;
+      const newMetrics: PerformanceMetrics = {
+        fps,
+        drawCalls: info.render.calls,
+        triangles: info.render.triangles,
+        memoryUsage: (performance as any).memory?.usedJSHeapSize / 1024 / 1024 || 0,
+      };
+      
+      setMetrics(newMetrics);
+      lastTimeRef.current = now;
+      
+      // Check budget violations
+      const targetFPS = device.recommendedSettings.targetFPS;
+      if (fps < targetFPS * 0.8) {
+        setWarningMessage(`⚠️ Low FPS: ${fps} (target: ${targetFPS})`);
         setShowWarning(true);
-        
-        // Log to console for debugging
-        console.warn('Performance budget violation:', {
-          fps: metrics.fps,
-          target: targetFPS,
-          drawCalls: metrics.drawCalls,
-          triangles: metrics.triangles,
-          memoryUsage: `${metrics.memoryUsage.toFixed(0)}MB`,
-        });
       } else {
         setShowWarning(false);
       }
-    },
-    {
-      targetFPS: device.recommendedSettings.targetFPS,
-      maxDrawCalls: 1000,
-      maxTriangles: 500000,
-      maxMemory: device.isMobile ? 200 : 512,
     }
-  );
+  });
   
   // Auto-hide warning after 5 seconds
   useEffect(() => {
@@ -71,7 +85,7 @@ export function PerformanceOverlay() {
   const isDev = process.env.NODE_ENV === 'development';
   
   return (
-    <>
+    <Html fullscreen style={{ pointerEvents: 'none' }}>
       {/* Performance Warning */}
       {showWarning && (
         <div className="fixed top-4 right-4 z-50 px-4 py-3 bg-warning/90 backdrop-blur-sm border border-warning rounded-lg shadow-lg animate-pulse">
@@ -88,6 +102,6 @@ export function PerformanceOverlay() {
           <div>Memory: {metrics.memoryUsage.toFixed(0)}MB</div>
         </div>
       )}
-    </>
+    </Html>
   );
 }

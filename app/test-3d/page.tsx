@@ -1,32 +1,69 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { Spinner } from '@/components/ui/Spinner';
 
-const Canvas = dynamic(() => import('@/components/canvas/Canvas').then(mod => ({ default: mod.Canvas })), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center">
-      <Spinner size="lg" />
-    </div>
-  ),
-});
+// Use regular imports with client component wrapper instead of dynamic imports
+// This avoids React context issues with R3F
+function Test3DContent() {
+  const [mounted, setMounted] = useState(false);
+  const [R3FComponents, setR3FComponents] = useState<{
+    Canvas: React.ComponentType<any>;
+    Scene: React.ComponentType<any>;
+    TestCube: React.ComponentType;
+    PerformanceOverlay: React.ComponentType;
+  } | null>(null);
 
-const Scene = dynamic(() => import('@/components/canvas/Scene').then(mod => ({ default: mod.Scene })), { ssr: false });
-const TestCube = dynamic(() => import('@/components/canvas/TestCube').then(mod => ({ default: mod.TestCube })), { ssr: false });
-const PerformanceOverlay = dynamic(() => import('@/components/canvas/PerformanceOverlay').then(mod => ({ default: mod.PerformanceOverlay })), { ssr: false });
+  useEffect(() => {
+    // Import R3F components only on client-side after mount
+    Promise.all([
+      import('@/components/canvas/Canvas'),
+      import('@/components/canvas/Scene'),
+      import('@/components/canvas/TestCube'),
+      import('@/components/canvas/PerformanceOverlay'),
+    ]).then(([canvasMod, sceneMod, testCubeMod, perfMod]) => {
+      setR3FComponents({
+        Canvas: canvasMod.Canvas,
+        Scene: sceneMod.Scene,
+        TestCube: testCubeMod.TestCube,
+        PerformanceOverlay: perfMod.PerformanceOverlay,
+      });
+      setMounted(true);
+    });
+  }, []);
+
+  if (!mounted || !R3FComponents) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-obsidian">
+        <Spinner size="lg" />
+        <span className="ml-3 text-white">Loading 3D Engine...</span>
+      </div>
+    );
+  }
+
+  const { Canvas, Scene, TestCube, PerformanceOverlay } = R3FComponents;
+
+  return (
+    <Canvas className="w-full h-full">
+      <Scene>
+        <TestCube />
+        <PerformanceOverlay />
+      </Scene>
+    </Canvas>
+  );
+}
 
 export default function Test3DPage() {
   return (
     <main className="min-h-screen bg-obsidian">
       <div className="fixed inset-0">
-        <Canvas className="w-full h-full">
-          <Scene>
-            <TestCube />
-            <PerformanceOverlay />
-          </Scene>
-        </Canvas>
+        <Suspense fallback={
+          <div className="w-full h-full flex items-center justify-center bg-obsidian">
+            <Spinner size="lg" />
+          </div>
+        }>
+          <Test3DContent />
+        </Suspense>
       </div>
       
       <div className="relative z-10 min-h-[300vh] pointer-events-none">
