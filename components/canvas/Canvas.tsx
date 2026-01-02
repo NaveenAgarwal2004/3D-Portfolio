@@ -1,9 +1,7 @@
 'use client';
 
 import { Suspense, ReactNode, useState, useEffect } from 'react';
-import { Canvas as R3FCanvas } from '@react-three/fiber';
 import { detectDevice } from '@/lib/utils/deviceDetection';
-import { GhostLoader } from './GhostLoader';
 
 interface CanvasProps {
   children: ReactNode;
@@ -25,23 +23,6 @@ interface DeviceSettings {
   };
 }
 
-function CanvasContent({ children, device }: { children: ReactNode; device: DeviceSettings }) {
-  return (
-    <Suspense fallback={<GhostLoader />}>
-      {/* Lighting */}
-      <ambientLight intensity={0.5} />
-      <directionalLight 
-        position={[10, 10, 5]} 
-        intensity={1} 
-        castShadow={device.recommendedSettings.shadowQuality !== 'off'} 
-      />
-      <pointLight position={[-10, -10, -5]} intensity={0.5} color="#8B5CF6" />
-      
-      {children}
-    </Suspense>
-  );
-}
-
 export function Canvas({ children, className }: CanvasProps) {
   const [device, setDevice] = useState<DeviceSettings>({
     isMobile: false,
@@ -58,15 +39,28 @@ export function Canvas({ children, className }: CanvasProps) {
   });
   
   const [mounted, setMounted] = useState(false);
+  const [R3F, setR3F] = useState<any>(null);
+  const [Drei, setDrei] = useState<any>(null);
   
-  // Detect device only on client-side after mount
+  // Detect device and load R3F only on client-side after mount
   useEffect(() => {
     setDevice(detectDevice());
-    setMounted(true);
+    
+    // Dynamic import of R3F and Drei to prevent SSR issues
+    Promise.all([
+      import('@react-three/fiber'),
+      import('@react-three/drei')
+    ]).then(([fiberModule, dreiModule]) => {
+      setR3F(fiberModule);
+      setDrei(dreiModule);
+      setMounted(true);
+    }).catch(err => {
+      console.error('Failed to load R3F:', err);
+    });
   }, []);
   
-  // Don't render until mounted to avoid SSR issues
-  if (!mounted || typeof window === 'undefined') {
+  // Don't render until mounted and R3F is loaded
+  if (!mounted || !R3F || !Drei || typeof window === 'undefined') {
     return (
       <div className={className}>
         <div className="w-full h-full flex items-center justify-center bg-obsidian">
@@ -75,6 +69,9 @@ export function Canvas({ children, className }: CanvasProps) {
       </div>
     );
   }
+  
+  const { Canvas: R3FCanvas } = R3F;
+  const { Html } = Drei;
   
   return (
     <div className={className}>
@@ -89,9 +86,22 @@ export function Canvas({ children, className }: CanvasProps) {
         camera={{ position: [0, 0, 10], fov: 50 }}
         shadows={device.recommendedSettings.shadowQuality !== 'off'}
       >
-        <CanvasContent device={device}>
+        <Suspense fallback={
+          <Html center>
+            <div className="text-white text-sm font-mono">Loading 3D Scene...</div>
+          </Html>
+        }>
+          {/* Lighting */}
+          <ambientLight intensity={0.5} />
+          <directionalLight 
+            position={[10, 10, 5]} 
+            intensity={1} 
+            castShadow={device.recommendedSettings.shadowQuality !== 'off'} 
+          />
+          <pointLight position={[-10, -10, -5]} intensity={0.5} color="#8B5CF6" />
+          
           {children}
-        </CanvasContent>
+        </Suspense>
       </R3FCanvas>
     </div>
   );
